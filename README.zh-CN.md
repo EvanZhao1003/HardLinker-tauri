@@ -30,3 +30,11 @@ npm run tauri dev
 ```powershell
 npm run tauri build
 ```
+
+只构建 EXE，不制作安装包：
+
+```powershell
+npm run tauri -- build --no-bundle
+```
+
+生成文件位于 `src-tauri\target\release\hardlinker.exe`。

@@ -30,3 +30,11 @@ Create a production bundle with:
 ```powershell
 npm run tauri build
 ```
+
+Build the executable without creating an installer:
+
+```powershell
+npm run tauri -- build --no-bundle
+```
+
+The executable is written to `src-tauri\target\release\hardlinker.exe`.
