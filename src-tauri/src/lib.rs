@@ -43,7 +43,7 @@ fn save_settings(app: tauri::AppHandle, settings: Settings) -> Result<(), String
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
-struct LinkResult { created: usize, failures: Vec<String>, destination_folder: Option<String> }
+struct LinkResult { created: usize, created_names: Vec<String>, failures: Vec<String>, destination_folder: Option<String> }
 
 fn create_link(source: &Path, destination: &Path) -> Result<(), String> {
     if !source.is_file() { return Err("Source file not found.".into()); }
@@ -61,12 +61,15 @@ fn create_file_links(sources: Vec<String>, target: String) -> Result<LinkResult,
     let target = PathBuf::from(target);
     if !target.is_dir() { return Err("Choose an existing destination folder first.".into()); }
     if sources.is_empty() { return Err("Add at least one source file first.".into()); }
-    let mut result = LinkResult { created: 0, failures: vec![], destination_folder: None };
+    let mut result = LinkResult { created: 0, created_names: vec![], failures: vec![], destination_folder: None };
     for source in sources {
         let source_path = PathBuf::from(&source);
         let destination = target.join(source_path.file_name().ok_or("Invalid source filename")?);
         match create_link(&source_path, &destination) {
-            Ok(()) => result.created += 1,
+            Ok(()) => {
+                result.created += 1;
+                result.created_names.push(source_path.file_name().unwrap_or_default().to_string_lossy().to_string());
+            }
             Err(error) => result.failures.push(format!("{}: {error}", source_path.file_name().unwrap_or_default().to_string_lossy())),
         }
     }
@@ -87,7 +90,7 @@ fn create_folder_links(source: String, parent: String, name: String) -> Result<L
     if !valid_directory_name(&folder_name) { return Err("Enter a valid single folder name.".into()); }
     let destination = parent.join(folder_name);
     fs::create_dir(&destination).map_err(|e| if e.kind() == io::ErrorKind::AlreadyExists { format!("The destination already exists: {}", destination.display()) } else { format!("Could not create the destination folder: {e}") })?;
-    let mut result = LinkResult { created: 0, failures: vec![], destination_folder: Some(destination.display().to_string()) };
+    let mut result = LinkResult { created: 0, created_names: vec![], failures: vec![], destination_folder: Some(destination.display().to_string()) };
     let entries = fs::read_dir(&source).map_err(|e| e.to_string())?;
     for entry in entries {
         let entry = match entry { Ok(e) => e, Err(e) => { result.failures.push(e.to_string()); continue; } };
@@ -95,7 +98,10 @@ fn create_folder_links(source: String, parent: String, name: String) -> Result<L
         if !path.is_file() { continue; }
         let target = destination.join(path.file_name().unwrap_or_default());
         match create_link(&path, &target) {
-            Ok(()) => result.created += 1,
+            Ok(()) => {
+                result.created += 1;
+                result.created_names.push(path.file_name().unwrap_or_default().to_string_lossy().to_string());
+            }
             Err(error) => result.failures.push(format!("{}: {error}", path.file_name().unwrap_or_default().to_string_lossy())),
         }
     }
